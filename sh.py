@@ -1,7 +1,7 @@
 """
 http://amoffat.github.io/sh/
 """
-#===============================================================================
+# ===============================================================================
 # Copyright (C) 2011-2017 by Andrew Moffat
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,22 +21,21 @@ http://amoffat.github.io/sh/
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#===============================================================================
+# ===============================================================================
 
 
 __version__ = "1.12.14"
 __project_url__ = "https://github.com/amoffat/sh"
 
-
 import platform
 
-if "windows" in platform.system().lower(): # pragma: no cover
+if "windows" in platform.system().lower():  # pragma: no cover
     raise ImportError("sh %s is currently only supported on linux and osx. \
 please install pbs 0.110 (http://pypi.python.org/pypi/pbs) for windows \
 support." % __version__)
 
-
 import sys
+
 IS_PY3 = sys.version_info[0] == 3
 MINOR_VER = sys.version_info[1]
 IS_PY26 = sys.version_info[0] == 2 and MINOR_VER == 6
@@ -59,6 +58,7 @@ import errno
 from io import UnsupportedOperation, open as fdopen
 
 from locale import getpreferredencoding
+
 DEFAULT_ENCODING = getpreferredencoding() or "UTF-8"
 
 # normally i would hate this idea of using a global to signify whether we are
@@ -71,8 +71,10 @@ FORCE_USE_SELECT = bool(int(os.environ.get("SH_TESTS_USE_SELECT", "0")))
 
 if IS_PY3:
     from io import StringIO
+
     ioStringIO = StringIO
     from io import BytesIO as cStringIO
+
     iocStringIO = cStringIO
     from queue import Queue, Empty
 
@@ -91,7 +93,6 @@ IS_OSX = platform.system() == "Darwin"
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 SH_LOGGER_NAME = __name__
 
-
 import errno
 import pty
 import termios
@@ -107,12 +108,10 @@ from collections import deque
 import logging
 import weakref
 
-
 # a re-entrant lock for pushd.  this way, multiple threads that happen to use
 # pushd will all see the current working directory for the duration of the
 # with-context
 PUSHD_LOCK = threading.RLock()
-
 
 if hasattr(inspect, "getfullargspec"):
     def get_num_args(fn):
@@ -127,16 +126,13 @@ if IS_PY3:
     basestring = str
     long = int
 
-
 _unicode_methods = set(dir(unicode()))
-
 
 HAS_POLL = hasattr(select, "poll")
 POLLER_EVENT_READ = 1
 POLLER_EVENT_WRITE = 2
 POLLER_EVENT_HUP = 4
 POLLER_EVENT_ERROR = 8
-
 
 # here we use an use a poller interface that transparently selects the most
 # capable poller (out of either select.select or select.poll).  this was added
@@ -330,6 +326,7 @@ class ErrorReturnCodeMeta(type):
     program we're testing throws may not be the same class that we pass to
     assertRaises
     """
+
     def __subclasscheck__(self, o):
         other_bases = set([b.__name__ for b in o.__bases__])
         return self.__name__ in other_bases or o.__name__ == self.__name__
@@ -391,12 +388,16 @@ class ErrorReturnCode(Exception):
 
 
 class SignalException(ErrorReturnCode): pass
+
+
 class TimeoutException(Exception):
     """ the exception thrown when a command is killed because a specified
     timeout (via _timeout) was hit """
+
     def __init__(self, exit_code):
         self.exit_code = exit_code
         super(Exception, self).__init__()
+
 
 SIGNALS_THAT_SHOULD_THROW_EXCEPTION = set((
     signal.SIGABRT,
@@ -419,13 +420,11 @@ SIGNALS_THAT_SHOULD_THROW_EXCEPTION = set((
 class CommandNotFound(AttributeError): pass
 
 
-
-
 rc_exc_regex = re.compile("(ErrorReturnCode|SignalException)_((\d+)|SIG[a-zA-Z]+)")
 rc_exc_cache = {}
 
 SIGNAL_MAPPING = {}
-for k,v in signal.__dict__.items():
+for k, v in signal.__dict__.items():
     if re.match(r"SIG[a-zA-Z]+", k):
         SIGNAL_MAPPING[v] = k
 
@@ -488,7 +487,6 @@ def get_rc_exc(rc):
     return exc
 
 
-
 # we monkey patch glob.  i'm normally generally against monkey patching, but i
 # decided to do this really un-intrusive patch because we need a way to detect
 # if a list that we pass into an sh command was generated from glob.  the reason
@@ -505,18 +503,19 @@ def get_rc_exc(rc):
 # wiser, but we'll have results that we can make some determinations on
 _old_glob = glob_module.glob
 
+
 class GlobResults(list):
     def __init__(self, path, results):
         self.path = path
         list.__init__(self, results)
 
+
 def glob(path, *args, **kwargs):
     expanded = GlobResults(path, _old_glob(path, *args, **kwargs))
     return expanded
 
+
 glob_module.glob = glob
-
-
 
 
 def which(program, paths=None):
@@ -584,8 +583,6 @@ def resolve_command(name, baked_args=None):
     return cmd
 
 
-
-
 class Logger(object):
     """ provides a memory-inexpensive logger.  a gotcha about python's builtin
     logger is that logger objects are never garbage collected.  if you create a
@@ -603,6 +600,7 @@ class Logger(object):
     "context", which will be the very unique name.  this allows us to get a
     logger with a very general name, eg: "command", and have a unique name
     appended to it via the context, eg: "ls -l /tmp" """
+
     def __init__(self, name, context=None):
         self.name = name
         self.log = logging.getLogger("%s.%s" % (SH_LOGGER_NAME, name))
@@ -643,7 +641,6 @@ def default_logger_str(cmd, call_args, pid=None):
     else:
         s = "<Command %r>" % cmd
     return s
-
 
 
 class RunningCommand(object):
@@ -713,7 +710,6 @@ class RunningCommand(object):
             spawn_process = False
             get_prepend_stack().append(self)
 
-
         if call_args["piped"] or call_args["iter"] or call_args["iter_noblock"]:
             should_wait = False
 
@@ -728,10 +724,9 @@ class RunningCommand(object):
 
         done_callback = call_args["done"]
         if done_callback:
-            call_args["done"] = partial(done_callback, self) 
+            call_args["done"] = partial(done_callback, self)
 
-
-        # set up which stream should write to the pipe
+            # set up which stream should write to the pipe
         # TODO, make pipe None by default and limit the size of the Queue
         # in oproc.OProc
         pipe = OProc.STDOUT
@@ -764,7 +759,7 @@ class RunningCommand(object):
             process_assign_lock = threading.Lock()
             with process_assign_lock:
                 self.process = OProc(self, self.log, cmd, stdin, stdout, stderr,
-                        self.call_args, pipe, process_assign_lock)
+                                     self.call_args, pipe, process_assign_lock)
 
             logger_str = log_str_factory(self.ran, call_args, self.process.pid)
             self.log.set_context(logger_str)
@@ -772,7 +767,6 @@ class RunningCommand(object):
 
             if should_wait:
                 self.wait()
-
 
     def wait(self):
         """ waits for the running command to finish.  this is called on all
@@ -790,7 +784,7 @@ class RunningCommand(object):
 
             else:
                 self.handle_command_exit_code(exit_code)
-        
+
                 # if an iterable command is using an instance of OProc for its stdin,
                 # wait on it.  the process is probably set to "piped", which means it
                 # won't be waited on, which means exceptions won't propagate up to the
@@ -801,19 +795,17 @@ class RunningCommand(object):
         self.log.info("process completed")
         return self
 
-
     def handle_command_exit_code(self, code):
         """ here we determine if we had an exception, or an error code that we
         weren't expecting to see.  if we did, we create and raise an exception
         """
         ca = self.call_args
         exc_class = get_exc_exit_code_would_raise(code, ca["ok_code"],
-                ca["piped"])
+                                                  ca["piped"])
         if exc_class:
             exc = exc_class(self.ran, self.process.stdout, self.process.stderr,
-                    ca["truncate_exc"])
+                            ca["truncate_exc"])
             raise exc
-
 
     @property
     def stdout(self):
@@ -829,7 +821,6 @@ class RunningCommand(object):
     def exit_code(self):
         self.wait()
         return self.process.exit_code
-
 
     def __len__(self):
         return len(str(self))
@@ -865,10 +856,9 @@ class RunningCommand(object):
                     raise StopIteration()
                 try:
                     return chunk.decode(self.call_args["encoding"],
-                        self.call_args["decode_errors"])
+                                        self.call_args["decode_errors"])
                 except UnicodeDecodeError:
                     return chunk
-
 
     # python 3
     __next__ = next
@@ -890,7 +880,7 @@ class RunningCommand(object):
         RunningCommand object will call this """
         if self.process and self.stdout:
             return self.stdout.decode(self.call_args["encoding"],
-                self.call_args["decode_errors"])
+                                      self.call_args["decode_errors"])
         elif IS_PY3:
             return ""
         else:
@@ -898,6 +888,7 @@ class RunningCommand(object):
 
     def __eq__(self, other):
         return unicode(self) == unicode(other)
+
     __hash__ = None  # Avoid DeprecationWarning in Python < 3
 
     def __contains__(self, item):
@@ -941,7 +932,6 @@ class RunningCommand(object):
 
     def __int__(self):
         return int(str(self).strip())
-
 
 
 def output_redirect_is_filename(out):
@@ -988,7 +978,7 @@ def get_fileno(ob):
             fileno = fileno_meth()
         except UnsupportedOperation:
             pass
-    elif isinstance(ob, (int,long)) and ob >= 0:
+    elif isinstance(ob, (int, long)) and ob >= 0:
         fileno = ob
 
     return fileno
@@ -1001,6 +991,7 @@ def ob_is_tty(ob):
     if fileno:
         is_tty = os.isatty(fileno)
     return is_tty
+
 
 def ob_is_pipe(ob):
     fileno = get_fileno(ob)
@@ -1022,6 +1013,7 @@ to set up a TTY with `_%s`" % (std, tty)
             invalid.append((args, error))
 
     return invalid
+
 
 def bufsize_validator(kwargs):
     """ a validator to prevent a user from saying that they want custom
@@ -1063,7 +1055,7 @@ class Command(object):
     thread_local = threading.local()
 
     _call_args = {
-        "fg": False, # run command in foreground
+        "fg": False,  # run command in foreground
 
         # run a command in the background.  commands run in the background
         # ignore SIGHUP and do not automatically exit when the parent process
@@ -1073,11 +1065,11 @@ class Command(object):
         # automatically report exceptions for background commands
         "bg_exc": True,
 
-        "with": False, # prepend the command to every command after it
+        "with": False,  # prepend the command to every command after it
         "in": None,
-        "out": None, # redirect STDOUT
-        "err": None, # redirect STDERR
-        "err_to_out": None, # redirect STDERR to STDOUT
+        "out": None,  # redirect STDOUT
+        "err": None,  # redirect STDERR
+        "err_to_out": None,  # redirect STDERR to STDOUT
 
         # stdin buffer size
         # 1 for line, 0 for unbuffered, any other number for that amount
@@ -1184,7 +1176,6 @@ output"),
         bufsize_validator,
     )
 
-
     def __init__(self, path, search_paths=None):
         found = which(path, search_paths)
 
@@ -1206,9 +1197,8 @@ output"),
         # exception.  if CommandNotFound is raised, we need self._path and the
         # other attributes to be set correctly, so repr() works when they're
         # inspecting the stack.  issue #304
-        self._path = encode_to_py3bytes_or_py2str(found) 
+        self._path = encode_to_py3bytes_or_py2str(found)
         self.__name__ = str(self)
-
 
     def __getattribute__(self, name):
         # convenience
@@ -1232,7 +1222,6 @@ output"),
 
         return val
 
-
     @staticmethod
     def _extract_call_args(kwargs):
         """ takes kwargs that were passed to a command's __call__ and extracts
@@ -1249,7 +1238,7 @@ output"),
                 del kwargs[key]
 
         invalid_kwargs = special_kwarg_validator(call_args,
-                Command._kwarg_validators)
+                                                 Command._kwarg_validators)
 
         if invalid_kwargs:
             exc_msg = []
@@ -1259,7 +1248,6 @@ output"),
             raise TypeError("Invalid special arguments:\n\n%s\n" % exc_msg)
 
         return call_args, kwargs
-
 
     # TODO needs documentation
     def bake(self, *args, **kwargs):
@@ -1281,7 +1269,7 @@ output"),
         fn._partial_baked_args.extend(self._partial_baked_args)
         sep = pruned_call_args.get("long_sep", self._call_args["long_sep"])
         prefix = pruned_call_args.get("long_prefix",
-                self._call_args["long_prefix"])
+                                      self._call_args["long_prefix"])
         fn._partial_baked_args.extend(compile_args(args, kwargs, sep, prefix))
         return fn
 
@@ -1293,18 +1281,15 @@ output"),
         else:
             return self.__unicode__().encode(DEFAULT_ENCODING)
 
-
     def __eq__(self, other):
         return str(self) == str(other)
 
     __hash__ = None  # Avoid DeprecationWarning in Python < 3
 
-
     def __repr__(self):
         """ in python3, should return unicode.  in python2, should return a
         string of bytes """
         return "<Command %r>" % str(self)
-
 
     def __unicode__(self):
         """ a magic method defined for python2.  calling unicode() on a
@@ -1319,7 +1304,6 @@ output"),
 
     def __exit__(self, typ, value, traceback):
         get_prepend_stack().pop()
-
 
     def __call__(self, *args, **kwargs):
 
@@ -1358,7 +1342,6 @@ output"),
         call_args.update(self._partial_call_args)
         call_args.update(extracted_call_args)
 
-
         # handle a None.  this is added back only to not break the api in the
         # 1.* version.  TODO remove this in 2.0, as "ok_code", if specified,
         # should always be a definitive value or list of values, and None is
@@ -1368,7 +1351,6 @@ output"),
 
         if not getattr(call_args["ok_code"], "__iter__", None):
             call_args["ok_code"] = [call_args["ok_code"]]
-
 
         # check if we're piping via composition
         stdin = call_args["in"]
@@ -1384,7 +1366,7 @@ output"),
                 args.insert(0, first_arg)
 
         processed_args = compile_args(args, kwargs, call_args["long_sep"],
-                call_args["long_prefix"])
+                                      call_args["long_prefix"])
 
         # makes sure our arguments are broken up correctly
         split_args = self._partial_baked_args + processed_args
@@ -1403,7 +1385,7 @@ output"),
 
             exit_code = launch()
             exc_class = get_exc_exit_code_would_raise(exit_code,
-                    call_args["ok_code"], call_args["piped"])
+                                                      call_args["ok_code"], call_args["piped"])
             if exc_class:
                 if IS_PY3:
                     ran = " ".join([arg.decode(DEFAULT_ENCODING, "ignore") for arg in cmd])
@@ -1412,7 +1394,6 @@ output"),
                 exc = exc_class(ran, b"", b"", call_args["truncate_exc"])
                 raise exc
             return None
-
 
         # stdout redirection
         stdout = call_args["out"]
@@ -1423,7 +1404,7 @@ output"),
         stderr = call_args["err"]
         if output_redirect_is_filename(stderr):
             stderr = open(str(stderr), "wb")
-    
+
         return RunningCommand(cmd, call_args, stdin, stdout, stderr)
 
 
@@ -1557,6 +1538,7 @@ def setwinsize(fd, rows_cols):
     s = struct.pack('HHHH', rows, cols, 0, 0)
     fcntl.ioctl(fd, TIOCSWINSZ, s)
 
+
 def construct_streamreader_callback(process, handler):
     """ here we're constructing a closure for our streamreader callback.  this
     is used in the case that we pass a callback into _out or _err, meaning we
@@ -1568,7 +1550,6 @@ def construct_streamreader_callback(process, handler):
     data).  as they get more advanced, they may want to terminate the process,
     or pass some stdin back, and will realize that they can pass a callback of
     more args """
-
 
     # implied arg refers to the "self" that methods will pass in.  we need to
     # account for this implied arg when figuring out what function the user
@@ -1594,7 +1575,6 @@ def construct_streamreader_callback(process, handler):
         else:
             implied_arg = 1
             num_args = get_num_args(handler_to_inspect.__call__)
-
 
     net_args = num_args - implied_arg - partial_args
 
@@ -1688,7 +1668,7 @@ class OProc(object):
     STDERR = -2
 
     def __init__(self, command, parent_log, cmd, stdin, stdout, stderr,
-            call_args, pipe, process_assign_lock):
+                 call_args, pipe, process_assign_lock):
         """
             cmd is the full string that will be exec'd.  it includes the program
             name and all its arguments
@@ -1721,7 +1701,6 @@ class OProc(object):
 
         self._stdin_process = None
 
-
         # if the objects that we are passing to the OProc happen to be a
         # file-like object that is a tty, for example `sys.stdin`, then, later
         # on in this constructor, we're going to skip out on setting up pipes
@@ -1737,8 +1716,8 @@ class OProc(object):
         # to force not using single_tty
         custom_in_out_err = stdin or stdout or stderr
 
-        single_tty = (ca["tty_in"] and ca["tty_out"])\
-                and not custom_in_out_err
+        single_tty = (ca["tty_in"] and ca["tty_out"]) \
+                     and not custom_in_out_err
 
         # this logic is a little convoluted, but basically this top-level
         # if/else is for consolidating input and output TTYs into a single
@@ -1773,7 +1752,6 @@ class OProc(object):
             # tty_in=False is the default
             else:
                 self._stdin_write_fd, self._stdin_read_fd = os.pipe()
-
 
             if stdout_is_tty_or_pipe and not tee_out:
                 self._stdout_write_fd = os.dup(get_fileno(stdout))
@@ -1811,7 +1789,6 @@ class OProc(object):
             else:
                 self._stderr_read_fd, self._stderr_write_fd = os.pipe()
 
-
         piped = ca["piped"]
         self._pipe_fd = None
         if piped:
@@ -1819,7 +1796,6 @@ class OProc(object):
             if piped == "err":
                 fd_to_use = self._stderr_read_fd
             self._pipe_fd = os.dup(fd_to_use)
-
 
         new_session = ca["new_session"]
         needs_ctty = ca["tty_in"] and new_session
@@ -1861,7 +1837,7 @@ class OProc(object):
         self.pid = os.fork()
 
         # child
-        if self.pid == 0: # pragma: no cover
+        if self.pid == 0:  # pragma: no cover
             if IS_OSX:
                 os.read(close_pipe_read, 1)
                 os.close(close_pipe_read)
@@ -1910,7 +1886,6 @@ class OProc(object):
                     # child process is run, and we can't do it twice.
                     tty.setraw(self._stdout_write_fd)
 
-
                 # if the parent-side fd for stdin exists, close it.  the case
                 # where it may not exist is if we're using piping
                 if self._stdin_read_fd:
@@ -1932,7 +1907,6 @@ class OProc(object):
                 os.dup2(self._stdout_write_fd, 1)
                 os.dup2(self._stderr_write_fd, 2)
 
-
                 # set our controlling terminal, but only if we're using a tty
                 # for stdin.  it doesn't make sense to have a ctty otherwise
                 if needs_ctty:
@@ -1949,7 +1923,6 @@ class OProc(object):
                 preexec_fn = ca["preexec_fn"]
                 if callable(preexec_fn):
                     preexec_fn()
-
 
                 # don't inherit file descriptors
                 max_fd = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
@@ -1995,7 +1968,7 @@ class OProc(object):
                 os.close(close_pipe_write)
 
             os.close(exc_pipe_write)
-            fork_exc = os.read(exc_pipe_read, 1024**2)
+            fork_exc = os.read(exc_pipe_read, 1024 ** 2)
             os.close(exc_pipe_read)
             if fork_exc:
                 fork_exc = fork_exc.decode(DEFAULT_ENCODING)
@@ -2003,7 +1976,7 @@ class OProc(object):
 
             os.close(session_pipe_write)
             sid, pgid = os.read(session_pipe_read,
-                    1024).decode(DEFAULT_ENCODING).split(",")
+                                1024).decode(DEFAULT_ENCODING).split(",")
             os.close(session_pipe_read)
             self.sid = int(sid)
             self.pgid = int(pgid)
@@ -2041,9 +2014,7 @@ class OProc(object):
             if ca["tty_in"] and not stdin_is_tty_or_pipe:
                 setwinsize(self._stdin_read_fd, ca["tty_size"])
 
-
             self.log = parent_log.get_child("process", repr(self))
-
 
             self.log.debug("started process")
 
@@ -2063,22 +2034,20 @@ class OProc(object):
             self._stdin_stream = None
             if self._stdin_read_fd and potentially_has_input:
                 log = self.log.get_child("streamwriter", "stdin")
-                self._stdin_stream =  StreamWriter(log, self._stdin_read_fd,
-                        self.stdin, ca["in_bufsize"], ca["encoding"],
-                        ca["tty_in"])
+                self._stdin_stream = StreamWriter(log, self._stdin_read_fd,
+                                                  self.stdin, ca["in_bufsize"], ca["encoding"],
+                                                  ca["tty_in"])
 
             stdout_pipe = None
             if pipe is OProc.STDOUT and not ca["no_pipe"]:
                 stdout_pipe = self._pipe_queue
-
 
             # this represents the connection from a process's STDOUT fd to
             # wherever it has to go, sometimes a pipe Queue (that we will use
             # to pipe data to other processes), and also an internal deque
             # that we use to aggregate all the output
             save_stdout = not ca["no_out"] and \
-                (tee_out or stdout is None)
-
+                          (tee_out or stdout is None)
 
             pipe_out = ca["piped"] in ("out", True)
             pipe_err = ca["piped"] in ("err",)
@@ -2092,16 +2061,15 @@ class OProc(object):
                 if callable(stdout):
                     stdout = construct_streamreader_callback(self, stdout)
                 self._stdout_stream = \
-                        StreamReader(
-                                self.log.get_child("streamreader", "stdout"),
-                                self._stdout_read_fd, stdout, self._stdout,
-                                ca["out_bufsize"], ca["encoding"],
-                                ca["decode_errors"], stdout_pipe,
-                                save_data=save_stdout)
+                    StreamReader(
+                        self.log.get_child("streamreader", "stdout"),
+                        self._stdout_read_fd, stdout, self._stdout,
+                        ca["out_bufsize"], ca["encoding"],
+                        ca["decode_errors"], stdout_pipe,
+                        save_data=save_stdout)
 
             elif self._stdout_read_fd:
                 os.close(self._stdout_read_fd)
-
 
             # if stderr is going to one place (because it's grouped with stdout,
             # or we're dealing with a single tty), then we don't actually need a
@@ -2116,31 +2084,29 @@ class OProc(object):
                     stderr_pipe = self._pipe_queue
 
                 save_stderr = not ca["no_err"] and \
-                    (ca["tee"] in ("err",) or stderr is None)
+                              (ca["tee"] in ("err",) or stderr is None)
 
                 if callable(stderr):
                     stderr = construct_streamreader_callback(self, stderr)
 
                 self._stderr_stream = StreamReader(Logger("streamreader"),
-                        self._stderr_read_fd, stderr, self._stderr,
-                        ca["err_bufsize"], ca["encoding"], ca["decode_errors"],
-                        stderr_pipe, save_data=save_stderr)
+                                                   self._stderr_read_fd, stderr, self._stderr,
+                                                   ca["err_bufsize"], ca["encoding"], ca["decode_errors"],
+                                                   stderr_pipe, save_data=save_stderr)
 
             elif self._stderr_read_fd:
                 os.close(self._stderr_read_fd)
 
-
             def timeout_fn():
                 self.timed_out = True
                 self.signal(ca["timeout_signal"])
-
 
             self._timeout_event = None
             self._timeout_timer = None
             if ca["timeout"]:
                 self._timeout_event = threading.Event()
                 self._timeout_timer = threading.Timer(ca["timeout"],
-                        self._timeout_event.set)
+                                                      self._timeout_event.set)
                 self._timeout_timer.start()
 
             # this is for cases where we know that the RunningCommand that was
@@ -2155,6 +2121,7 @@ class OProc(object):
                 def fn(exit_code):
                     with process_assign_lock:
                         return self.command.handle_command_exit_code(exit_code)
+
                 handle_exit_code = fn
 
             self._quit_threads = threading.Event()
@@ -2162,10 +2129,9 @@ class OProc(object):
             thread_name = "background thread for pid %d" % self.pid
             self._bg_thread_exc_queue = Queue(1)
             self._background_thread = _start_daemon_thread(background_thread,
-                    thread_name, self._bg_thread_exc_queue, timeout_fn,
-                    self._timeout_event, handle_exit_code, self.is_alive,
-                    self._quit_threads)
-
+                                                           thread_name, self._bg_thread_exc_queue, timeout_fn,
+                                                           self._timeout_event, handle_exit_code, self.is_alive,
+                                                           self._quit_threads)
 
             # start the main io threads. stdin thread is not needed if we are
             # connecting from another process's stdout pipe
@@ -2175,10 +2141,9 @@ class OProc(object):
                 close_before_term = not needs_ctty
                 thread_name = "STDIN thread for pid %d" % self.pid
                 self._input_thread = _start_daemon_thread(input_thread,
-                        thread_name, self._input_thread_exc_queue, self.log,
-                        self._stdin_stream, self.is_alive, self._quit_threads,
-                        close_before_term)
-
+                                                          thread_name, self._input_thread_exc_queue, self.log,
+                                                          self._stdin_stream, self.is_alive, self._quit_threads,
+                                                          close_before_term)
 
             # this event is for cases where the subprocess that we launch
             # launches its OWN subprocess and dups the stdout/stderr fds to that
@@ -2190,15 +2155,13 @@ class OProc(object):
             self._output_thread_exc_queue = Queue(1)
             thread_name = "STDOUT/ERR thread for pid %d" % self.pid
             self._output_thread = _start_daemon_thread(output_thread,
-                    thread_name, self._output_thread_exc_queue, self.log,
-                    self._stdout_stream, self._stderr_stream,
-                    self._timeout_event, self.is_alive, self._quit_threads,
-                    self._stop_output_event)
-
+                                                       thread_name, self._output_thread_exc_queue, self.log,
+                                                       self._stdout_stream, self._stderr_stream,
+                                                       self._timeout_event, self.is_alive, self._quit_threads,
+                                                       self._stop_output_event)
 
     def __repr__(self):
         return "<Process %d %r>" % (self.pid, self.cmd[:500])
-
 
     # these next 3 properties are primary for tests
     @property
@@ -2228,7 +2191,6 @@ class OProc(object):
             pass
         return exc
 
-
     def change_in_bufsize(self, buf):
         self._stdin_stream.stream_bufferer.change_buffering(buf)
 
@@ -2237,8 +2199,6 @@ class OProc(object):
 
     def change_err_bufsize(self, buf):
         self._stderr_stream.stream_bufferer.change_buffering(buf)
-
-
 
     @property
     def stdout(self):
@@ -2279,7 +2239,6 @@ class OProc(object):
     def terminate(self):
         self.log.debug("terminating")
         self.signal(signal.SIGTERM)
-
 
     def is_alive(self):
         """ polls if our child process has completed, without blocking.  this
@@ -2325,7 +2284,6 @@ class OProc(object):
         finally:
             self._wait_lock.release()
 
-
     def _process_just_ended(self):
         if self._timeout_timer:
             self._timeout_timer.cancel()
@@ -2342,7 +2300,6 @@ class OProc(object):
         if self._stdin_read_fd and not self._stdin_stream:
             os.close(self._stdin_read_fd)
 
-
     def wait(self):
         """ waits for the process to complete, handles the exit code """
 
@@ -2355,13 +2312,13 @@ class OProc(object):
 
             if self.exit_code is None:
                 self.log.debug("exit code not set, waiting on pid")
-                pid, exit_code = no_interrupt(os.waitpid, self.pid, 0) # blocks
+                pid, exit_code = no_interrupt(os.waitpid, self.pid, 0)  # blocks
                 self.exit_code = handle_process_exit_code(exit_code)
                 witnessed_end = True
 
             else:
                 self.log.debug("exit code already set (%d), no need to wait",
-                        self.exit_code)
+                               self.exit_code)
 
             self._quit_threads.set()
 
@@ -2387,7 +2344,6 @@ class OProc(object):
                 self._process_just_ended()
 
             return self.exit_code
-
 
 
 def input_thread(log, stdin, is_alive, quit, close_before_term):
@@ -2432,7 +2388,7 @@ def event_wait(ev, timeout=None):
 
 
 def background_thread(timeout_fn, timeout_event, handle_exit_code, is_alive,
-        quit):
+                      quit):
     """ handles the timeout logic """
 
     # if there's a timeout event, loop 
@@ -2450,7 +2406,7 @@ def background_thread(timeout_fn, timeout_event, handle_exit_code, is_alive,
     # this reports the exit code exception in our thread.  it's purely for the
     # user's awareness, and cannot be caught or used in any way, so it's ok to
     # suppress this during the tests
-    if handle_exit_code and not RUNNING_TESTS: # pragma: no cover
+    if handle_exit_code and not RUNNING_TESTS:  # pragma: no cover
         alive = True
         while alive:
             quit.wait(1)
@@ -2460,7 +2416,7 @@ def background_thread(timeout_fn, timeout_event, handle_exit_code, is_alive,
 
 
 def output_thread(log, stdout, stderr, timeout_event, is_alive, quit,
-        stop_output_event):
+                  stop_output_event):
     """ this function is run in a separate thread.  it reads from the
     process's stdout stream (a streamreader), and waits for it to claim that
     its done """
@@ -2511,6 +2467,8 @@ def output_thread(log, stdout, stderr, timeout_event, is_alive, quit,
 
 
 class DoneReadingForever(Exception): pass
+
+
 class NotYetReadyToRead(Exception): pass
 
 
@@ -2565,7 +2523,6 @@ def determine_how_to_read_input(input_obj):
     return get_chunk, log_msg
 
 
-
 def get_queue_chunk_reader(stdin):
     def fn():
         try:
@@ -2575,6 +2532,7 @@ def get_queue_chunk_reader(stdin):
         if chunk is None:
             raise DoneReadingForever
         return chunk
+
     return fn
 
 
@@ -2613,7 +2571,9 @@ def get_iter_chunk_reader(stdin):
             return chunk
         except StopIteration:
             raise DoneReadingForever
+
     return fn
+
 
 def get_file_chunk_reader(stdin):
     bufsize = 1024
@@ -2670,7 +2630,6 @@ def bufsize_type_to_bufsize(bf_type):
     return bufsize
 
 
-
 class StreamWriter(object):
     """ StreamWriter reads from some input (the stdin param) and writes to a fd
     (the stream param).  the stdin may be a Queue, a callable, something with
@@ -2689,13 +2648,10 @@ class StreamWriter(object):
         self.get_chunk, log_msg = determine_how_to_read_input(stdin)
         self.log.debug("parsed stdin as a %s", log_msg)
 
-
     def fileno(self):
         """ defining this allows us to do poll on an instance of this
         class """
         return self.stream
-
-
 
     def write(self):
         """ attempt to get a chunk of data to write to our child process's
@@ -2750,7 +2706,7 @@ class StreamWriter(object):
 
         for proc_chunk in self.stream_bufferer.process(chunk):
             self.log.debug("got chunk size %d: %r", len(proc_chunk),
-                    proc_chunk[:30])
+                           proc_chunk[:30])
 
             self.log.debug("writing chunk to process")
             try:
@@ -2758,7 +2714,6 @@ class StreamWriter(object):
             except OSError:
                 self.log.debug("OSError writing stdin chunk")
                 return True
-
 
     def close(self):
         self.log.debug("closing, but flushing first")
@@ -2777,7 +2732,7 @@ class StreamWriter(object):
 def determine_how_to_feed_output(handler, encoding, decode_errors):
     if callable(handler):
         process, finish = get_callback_chunk_consumer(handler, encoding,
-                decode_errors)
+                                                      decode_errors)
 
     # in py3, this is used for bytes
     elif isinstance(handler, (cStringIO, iocStringIO)):
@@ -2786,7 +2741,7 @@ def determine_how_to_feed_output(handler, encoding, decode_errors):
     # in py3, this is used for unicode
     elif isinstance(handler, (StringIO, ioStringIO)):
         process, finish = get_stringio_chunk_consumer(handler, encoding,
-                decode_errors)
+                                                      decode_errors)
 
     elif hasattr(handler, "write"):
         process, finish = get_file_chunk_consumer(handler)
@@ -2806,6 +2761,7 @@ def determine_how_to_feed_output(handler, encoding, decode_errors):
 def get_fd_chunk_consumer(handler):
     handler = fdopen(handler, "w", closefd=False)
     return get_file_chunk_consumer(handler)
+
 
 def get_file_chunk_consumer(handler):
     encode = lambda chunk: chunk
@@ -2828,6 +2784,7 @@ def get_file_chunk_consumer(handler):
 
     return process, finish
 
+
 def get_callback_chunk_consumer(handler, encoding, decode_errors):
     def process(chunk):
         # try to use the encoding first, if that doesn't work, send
@@ -2842,6 +2799,7 @@ def get_callback_chunk_consumer(handler, encoding, decode_errors):
         pass
 
     return process, finish
+
 
 def get_cstringio_chunk_consumer(handler):
     def process(chunk):
@@ -2868,8 +2826,9 @@ def get_stringio_chunk_consumer(handler, encoding, decode_errors):
 class StreamReader(object):
     """ reads from some output (the stream) and sends what it just read to the
     handler.  """
+
     def __init__(self, log, stream, handler, buffer, bufsize_type, encoding,
-            decode_errors, pipe_queue=None, save_data=True):
+                 decode_errors, pipe_queue=None, save_data=True):
         self.stream = stream
         self.buffer = buffer
         self.save_data = save_data
@@ -2883,14 +2842,13 @@ class StreamReader(object):
         self.log = log
 
         self.stream_bufferer = StreamBufferer(bufsize_type, self.encoding,
-                self.decode_errors)
+                                              self.decode_errors)
         self.bufsize = bufsize_type_to_bufsize(bufsize_type)
 
         self.process_chunk, self.finish_chunk_processor = \
-                determine_how_to_feed_output(handler, encoding, decode_errors)
+            determine_how_to_feed_output(handler, encoding, decode_errors)
 
         self.should_quit = False
-
 
     def fileno(self):
         """ defining this allows us to do poll on an instance of this
@@ -2910,13 +2868,11 @@ class StreamReader(object):
 
         os.close(self.stream)
 
-
     def write_chunk(self, chunk):
         # in PY3, the chunk coming in will be bytes, so keep that in mind
 
         if not self.should_quit:
             self.should_quit = self.process_chunk(chunk)
-
 
         if self.save_data:
             self.buffer.append(chunk)
@@ -2924,7 +2880,6 @@ class StreamReader(object):
             if self.pipe_queue:
                 self.log.debug("putting chunk onto pipe: %r", chunk[:30])
                 self.pipe_queue().put(chunk)
-
 
     def read(self):
         # if we're PY3, we're reading bytes, otherwise we're reading
@@ -2943,8 +2898,6 @@ class StreamReader(object):
             self.write_chunk(chunk)
 
 
-
-
 class StreamBufferer(object):
     """ this is used for feeding in chunks of stdout/stderr, and breaking it up
     into chunks that will actually be put into the internal buffers.  for
@@ -2954,7 +2907,7 @@ class StreamBufferer(object):
     the data and feed it as lines to be sent down the pipe """
 
     def __init__(self, buffer_type, encoding=DEFAULT_ENCODING,
-            decode_errors="strict"):
+                 decode_errors="strict"):
         # 0 for unbuffered, 1 for line, everything else for that amount
         self.type = buffer_type
         self.buffer = []
@@ -2975,7 +2928,6 @@ class StreamBufferer(object):
         self._buffering_lock = threading.RLock()
         self.log = Logger("stream_bufferer")
 
-
     def change_buffering(self, new_type):
         # TODO, when we stop supporting 2.6, make this a with context
         self.log.debug("acquiring buffering lock for changing buffering")
@@ -2989,7 +2941,6 @@ class StreamBufferer(object):
         finally:
             self._buffering_lock.release()
             self.log.debug("released buffering lock for changing buffering")
-
 
     def process(self, chunk):
         # MAKE SURE THAT THE INPUT IS PY3 BYTES
@@ -3056,7 +3007,6 @@ class StreamBufferer(object):
             self._buffering_lock.release()
             self.log.debug("released buffering lock for processing chunk (buffering: %d)", self.type)
 
-
     def flush(self):
         self.log.debug("acquiring buffering lock for flushing buffer")
         self._buffering_lock.acquire()
@@ -3070,16 +3020,18 @@ class StreamBufferer(object):
             self.log.debug("released buffering lock for flushing buffer")
 
 
-
 def with_lock(lock):
     def wrapped(fn):
         fn = contextmanager(fn)
+
         @contextmanager
         def wrapped2(*args, **kwargs):
             with lock:
                 with fn(*args, **kwargs):
                     yield
+
         return wrapped2
+
     return wrapped
 
 
@@ -3101,7 +3053,7 @@ def args(**kwargs):
     """ allows us to temporarily override all the special keyword parameters in
     a with context """
 
-    kwargs_str = ",".join(["%s=%r" % (k,v) for k,v in kwargs.items()])
+    kwargs_str = ",".join(["%s=%r" % (k, v) for k, v in kwargs.items()])
 
     raise DeprecationWarning("""
 
@@ -3120,7 +3072,6 @@ or
 """.format(kwargs=kwargs_str))
 
 
-
 class Environment(dict):
     """ this allows lookups to names that aren't found in the global scope to be
     searched for as a program name.  for example, if "ls" isn't found in this
@@ -3129,7 +3080,6 @@ class Environment(dict):
     we use a dict instead of just a regular object as the base class because the
     exec() statement used in the run_repl requires the "globals" argument to be a
     dictionary """
-
 
     # this is a list of all of the names that the sh module exports that will
     # not resolve to functions.  we don't want to accidentally shadow real
@@ -3154,7 +3104,6 @@ class Environment(dict):
         "glob",
         "contrib",
     ])
-
 
     def __init__(self, globs, baked_args={}):
         """ baked_args are defaults for the 'sh' execution context.  for
@@ -3186,30 +3135,25 @@ class Environment(dict):
             raise RuntimeError("Cannot import * from sh. \
 Please import sh or import programs individually.")
 
-
         # check if we're naming a dynamically generated ReturnCode exception
         exc = get_exc_from_name(k)
         if exc:
             return exc
-
 
         # https://github.com/ipython/ipython/issues/2577
         # https://github.com/amoffat/sh/issues/97#issuecomment-10610629
         if k.startswith("__") and k.endswith("__"):
             raise AttributeError
 
-
         # is it a custom builtin?
         builtin = getattr(self, "b_" + k, None)
         if builtin:
             return builtin
 
-
         # is it a command?
         cmd = resolve_command(k, self.baked_args)
         if cmd:
             return cmd
-
 
         # how about an environment variable?
         # this check must come after testing if its a command, because on some
@@ -3221,10 +3165,8 @@ Please import sh or import programs individually.")
         except KeyError:
             pass
 
-
         # nothing found, raise an exception
         raise CommandNotFound(k)
-
 
     # methods that begin with "b_" are custom builtins and will override any
     # program that exists in our path.  this is useful for things like
@@ -3241,11 +3183,10 @@ Please import sh or import programs individually.")
         return which(program, paths)
 
 
-class Contrib(ModuleType): # pragma: no cover
+class Contrib(ModuleType):  # pragma: no cover
     @classmethod
     def __call__(cls, name):
         def wrapper1(fn):
-
             @property
             def cmd_getter(self):
                 cmd = resolve_command(name)
@@ -3268,13 +3209,14 @@ sys.modules[mod_name] = contrib
 
 
 @contrib("git")
-def git(orig): # pragma: no cover
+def git(orig):  # pragma: no cover
     """ most git commands play nicer without a TTY """
     cmd = orig.bake(_tty_out=False)
     return cmd
 
+
 @contrib("sudo")
-def sudo(orig): # pragma: no cover
+def sudo(orig):  # pragma: no cover
     """ a nicer version of sudo that uses getpass to ask for a password, or
     allows the first argument to be a string password """
 
@@ -3283,7 +3225,6 @@ def sudo(orig): # pragma: no cover
     def stdin():
         pw = getpass.getpass(prompt=prompt) + "\n"
         yield pw
-
 
     def process(args, kwargs):
         password = kwargs.pop("password", None)
@@ -3300,9 +3241,7 @@ def sudo(orig): # pragma: no cover
     return cmd
 
 
-
-
-def run_repl(env): # pragma: no cover
+def run_repl(env):  # pragma: no cover
     banner = "\n>> sh v{version}\n>> https://github.com/amoffat/sh\n"
 
     print(banner.format(version=__version__))
@@ -3321,8 +3260,6 @@ def run_repl(env): # pragma: no cover
 
     # cleans up our last line
     print("")
-
-
 
 
 # this is a thin wrapper around THIS module (we patch sys.modules[__name__]).
@@ -3392,6 +3329,7 @@ def register_importer():
 
     def test(importer):
         return importer.__class__.__name__ == ModuleImporterFromVariables.__name__
+
     already_registered = any([True for i in sys.meta_path if test(i)])
 
     if not already_registered:
@@ -3402,9 +3340,11 @@ def register_importer():
 
     return not already_registered
 
+
 def fetch_module_from_frame(name, frame):
     mod = frame.f_locals.get(name, frame.f_globals.get(name, None))
     return mod
+
 
 class ModuleImporterFromVariables(object):
     """ a fancy importer that allows us to import from a variable that was
@@ -3417,7 +3357,6 @@ class ModuleImporterFromVariables(object):
 
     def __init__(self, restrict_to=None):
         self.restrict_to = set(restrict_to or set())
-
 
     def find_module(self, mod_fullname, path=None):
         """ mod_fullname doubles as the name of the VARIABLE holding our new sh
@@ -3447,7 +3386,6 @@ class ModuleImporterFromVariables(object):
 
         return self
 
-
     def load_module(self, mod_fullname):
         parent_frame = inspect.currentframe().f_back
 
@@ -3466,7 +3404,7 @@ class ModuleImporterFromVariables(object):
         return module
 
 
-def run_tests(env, locale, args, version, force_select, **extra_env): # pragma: no cover
+def run_tests(env, locale, args, version, force_select, **extra_env):  # pragma: no cover
     py_version = "python"
     py_version += str(version)
 
@@ -3479,12 +3417,12 @@ def run_tests(env, locale, args, version, force_select, **extra_env): # pragma: 
 
     if py_bin:
         print("Testing %s, locale %r, poller: %s" % (py_version.capitalize(),
-            locale, poller))
+                                                     locale, poller))
 
         env["SH_TESTS_USE_SELECT"] = str(int(force_select))
         env["LANG"] = locale
 
-        for k,v in extra_env.items():
+        for k, v in extra_env.items():
             env[k] = str(v)
 
         cmd = [py_bin, "-W", "ignore", os.path.join(THIS_DIR, "test.py")] + args[1:]
@@ -3494,9 +3432,8 @@ def run_tests(env, locale, args, version, force_select, **extra_env): # pragma: 
     return return_code
 
 
-
 # we're being run as a stand-alone script
-if __name__ == "__main__": # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     def parse_args():
         from optparse import OptionParser
 
@@ -3510,6 +3447,7 @@ if __name__ == "__main__": # pragma: no cover
 
         return args, envs, constrain_locales
 
+
     # these are essentially restrictions on what envs/constrain_locales to restrict to for
     # the tests.  if they're empty lists, it means use all available
     args, constrain_versions, constrain_locales = parse_args()
@@ -3519,6 +3457,7 @@ if __name__ == "__main__": # pragma: no cover
 
     if action in ("test", "travis"):
         import test
+
         coverage = None
         if test.HAS_UNICODE_LITERAL:
             import coverage
@@ -3558,7 +3497,7 @@ if __name__ == "__main__": # pragma: no cover
                     env_copy = env.copy()
 
                     exit_code = run_tests(env_copy, locale, args, version,
-                            force_select, SH_TEST_RUN_IDX=i)
+                                          force_select, SH_TEST_RUN_IDX=i)
 
                     if exit_code is None:
                         print("Couldn't find %s, skipping" % version)
@@ -3581,4 +3520,3 @@ else:
     self = sys.modules[__name__]
     sys.modules[__name__] = SelfWrapper(self)
     register_importer()
-
