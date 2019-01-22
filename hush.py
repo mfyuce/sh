@@ -418,7 +418,7 @@ def which(program, paths=None):
             if is_exe(exe_file):
                 found_path = exe_file
                 break
-            exe_file=exe_file + ".exe"
+            exe_file = exe_file + ".exe"
             if is_exe(exe_file):
                 found_path = exe_file
                 break
@@ -627,8 +627,9 @@ class RunningCommand(object):
             # with process_assign_lock:
             #     self.process = OProc(self, self.log, cmd, stdin, stdout, stderr,
             #                          self.call_args, pipe, process_assign_lock)
-            self.output = subprocess.check_output(cmd[0].decode(), shell=True, stderr=subprocess.STDOUT)
-            logger_str = log_str_factory(self.ran, call_args, "" ) # self.process.pid
+            self.output = subprocess.check_output('"' + cmd[0].decode() + '" ' + " " + " ".join([x.decode() for x in cmd[1:]]),
+                                                  shell=True, stderr=subprocess.STDOUT)
+            logger_str = log_str_factory(self.ran, call_args, "")  # self.process.pid
             self.log.set_context(logger_str)
             self.log.info("process started")
 
@@ -748,7 +749,7 @@ class RunningCommand(object):
         if self.process and self.stdout:
             return self.stdout.decode(self.call_args["encoding"],
                                       self.call_args["decode_errors"])
-        if self.output :
+        if self.output:
             return self.output.decode(self.call_args["encoding"],
                                       self.call_args["decode_errors"])
         elif IS_PY3:
@@ -985,7 +986,7 @@ class Command(object):
 
         # how long the process should run before it is auto-killed
         "timeout": None,
-        "timeout_signal": signal.SIGTERM, #SIGKILL,
+        "timeout_signal": signal.SIGTERM,  # SIGKILL,
 
         # TODO write some docs on "long-running processes"
         # these control whether or not stdout/err will get aggregated together
@@ -1276,7 +1277,6 @@ output"),
             stderr = open(str(stderr), "wb")
 
         return RunningCommand(cmd, call_args, stdin, stdout, stderr)
-
 
 
 def compile_args(args, kwargs, sep, prefix):
