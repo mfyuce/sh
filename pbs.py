@@ -262,6 +262,8 @@ class Command(object):
     @classmethod
     def _create(cls, program):
         path = resolve_program(program)
+        if not path:
+            path = resolve_program(program + ".exe")
         if not path: raise CommandNotFound(program)
         return cls(path)
 
